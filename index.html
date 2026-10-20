@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Leke AST Code Inspector — Static Security Gate</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #30363d;
+      --accent: #f59e0b;
+      --accent-glow: rgba(245, 158, 11, 0.25);
+      --danger: #ef4444;
+      --text: #c9d1d9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: var(--bg); color: var(--text); padding: 2.5rem 1rem;
+      display: flex; flex-direction: column; align-items: center;
+    }
+    .container { max-width: 900px; width: 100%; }
+    .badge {
+      display: inline-block; background: rgba(245, 158, 11, 0.15);
+      border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent);
+      padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600;
+      text-transform: uppercase; margin-bottom: 1rem;
+    }
+    h1 { font-size: 2.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+    p.lead { color: #8b949e; font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.6; }
+    .panel {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
+    }
+    textarea {
+      width: 100%; height: 200px; background: #090d13; border: 1px solid #21262d;
+      border-radius: 8px; color: #e6edf3; padding: 0.85rem; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;
+    }
+    button {
+      background: #238636; color: #fff; font-weight: 600; padding: 0.85rem 1.5rem;
+      border: none; border-radius: 8px; cursor: pointer; width: 100%;
+    }
+    .finding-card {
+      background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px; padding: 1rem; margin-top: 0.75rem;
+    }
+    .finding-title { font-weight: 600; color: #f87171; display: flex; justify-content: space-between; }
+    .finding-desc { font-size: 0.85rem; color: #8b949e; margin-top: 0.25rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Static AST Security Analyzer</div>
+    <h1>Python AST Guardrail Inspector</h1>
+    <p class="lead">Simulates Python's built-in <code>ast</code> NodeVisitor to catch dangerous patterns (eval, raw SQL concatenation, hardcoded secrets, and os.system) in agent code diffs.</p>
+
+    <div class="panel">
+      <h3>Paste Python Code for AST Analysis</h3>
+      <textarea id="codeSource">import os
+import sqlite3
+
+API_KEY = "sk-live-supersecretpassword1234"
+
+def process_query(user_input, user_id):
+    # Rule 1 Violation: eval execution
+    data = eval(user_input)
+
+    # Rule 2 Violation: Command injection
+    os.system("cat " + user_input)
+
+    # Rule 3 Violation: Raw SQL string concatenation
+    cursor = sqlite3.connect("app.db").cursor()
+    cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
+    return data</textarea>
+      <button onclick="analyzeAST()">Inspect Abstract Syntax Tree</button>
+    </div>
+
+    <div class="panel">
+      <h3>AST Security Violations Detected</h3>
+      <div id="findingsContainer">
+        <p style="color: #8b949e; font-size: 0.9rem;">Click 'Inspect Abstract Syntax Tree' to run analysis...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function analyzeAST() {
+      const code = document.getElementById('codeSource').value;
+      const findings = [];
+
+      if (/eval\s*\(/.test(code)) {
+        findings.push({ rule: "DANGEROUS_EVAL_EXEC", sev: "CRITICAL", msg: "Use of built-in eval() allows arbitrary remote code execution." });
+      }
+      if (/os\.system\s*\(/.test(code)) {
+        findings.push({ rule: "INSECURE_OS_SYSTEM", sev: "HIGH", msg: "Use of os.system() is vulnerable to shell injection." });
+      }
+      if (/execute\s*\(\s*f["']/.test(code) || /execute\s*\([^,]*\+/.test(code)) {
+        findings.push({ rule: "RAW_SQL_STRING_CONCATENATION", sev: "CRITICAL", msg: "Dynamic string formatting inside database execute() leads to SQL Injection." });
+      }
+      if (/(?:api_key|secret|password)\s*=\s*["'][^"']{8,}["']/i.test(code)) {
+        findings.push({ rule: "HARDCODED_CREDENTIAL", sev: "HIGH", msg: "Hardcoded secret string found in variable assignment." });
+      }
+
+      const container = document.getElementById('findingsContainer');
+      container.innerHTML = '';
+
+      if (findings.length === 0) {
+        container.innerHTML = '<p style="color: #34d399;">✅ Zero security violations detected. Clean AST structure!</p>';
+        return;
+      }
+
+      findings.forEach(f => {
+        container.innerHTML += `
+          <div class="finding-card">
+            <div class="finding-title">
+              <span>⚠️ ${f.rule}</span>
+              <span style="font-size: 0.75rem; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px;">${f.sev}</span>
+            </div>
+            <div class="finding-desc">${f.msg}</div>
+          </div>
+        `;
+      });
+    }
+  </script>
+</body>
+</html>
