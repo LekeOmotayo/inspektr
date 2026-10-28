@@ -3,127 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Leke AST Code Inspector — Static Security Gate</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0d1117;
-      --card: #161b22;
-      --border: #30363d;
-      --accent: #f59e0b;
-      --accent-glow: rgba(245, 158, 11, 0.25);
-      --danger: #ef4444;
-      --text: #c9d1d9;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Plus Jakarta Sans', sans-serif;
-      background: var(--bg); color: var(--text); padding: 2.5rem 1rem;
-      display: flex; flex-direction: column; align-items: center;
-    }
-    .container { max-width: 900px; width: 100%; }
-    .badge {
-      display: inline-block; background: rgba(245, 158, 11, 0.15);
-      border: 1px solid rgba(245, 158, 11, 0.3); color: var(--accent);
-      padding: 0.35rem 0.85rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600;
-      text-transform: uppercase; margin-bottom: 1rem;
-    }
-    h1 { font-size: 2.25rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
-    p.lead { color: #8b949e; font-size: 1.05rem; margin-bottom: 2rem; line-height: 1.6; }
-    .panel {
-      background: var(--card); border: 1px solid var(--border);
-      border-radius: 12px; padding: 1.5rem; margin-bottom: 1.5rem;
-    }
-    textarea {
-      width: 100%; height: 200px; background: #090d13; border: 1px solid #21262d;
-      border-radius: 8px; color: #e6edf3; padding: 0.85rem; font-family: 'JetBrains Mono', monospace;
-      font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;
-    }
-    button {
-      background: #238636; color: #fff; font-weight: 600; padding: 0.85rem 1.5rem;
-      border: none; border-radius: 8px; cursor: pointer; width: 100%;
-    }
-    .finding-card {
-      background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3);
-      border-radius: 8px; padding: 1rem; margin-top: 0.75rem;
-    }
-    .finding-title { font-weight: 600; color: #f87171; display: flex; justify-content: space-between; }
-    .finding-desc { font-size: 0.85rem; color: #8b949e; margin-top: 0.25rem; }
-  </style>
+  <title>Leke AST Code Inspector — Static Security Guardrail & Complexity Analyzer</title>
+  <meta name="description" content="Enterprise Python AST Static Security Analyzer for AI Agent pipelines and CI/CD code scanning.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/css/styles.css">
 </head>
 <body>
-  <div class="container">
-    <div class="badge">Static AST Security Analyzer</div>
-    <h1>Python AST Guardrail Inspector</h1>
-    <p class="lead">Simulates Python's built-in <code>ast</code> NodeVisitor to catch dangerous patterns (eval, raw SQL concatenation, hardcoded secrets, and os.system) in agent code diffs.</p>
 
-    <div class="panel">
-      <h3>Paste Python Code for AST Analysis</h3>
-      <textarea id="codeSource">import os
-import sqlite3
-
-API_KEY = "sk-live-supersecretpassword1234"
-
-def process_query(user_input, user_id):
-    # Rule 1 Violation: eval execution
-    data = eval(user_input)
-
-    # Rule 2 Violation: Command injection
-    os.system("cat " + user_input)
-
-    # Rule 3 Violation: Raw SQL string concatenation
-    cursor = sqlite3.connect("app.db").cursor()
-    cursor.execute(f"SELECT * FROM users WHERE id = {user_id}")
-    return data</textarea>
-      <button onclick="analyzeAST()">Inspect Abstract Syntax Tree</button>
-    </div>
-
-    <div class="panel">
-      <h3>AST Security Violations Detected</h3>
-      <div id="findingsContainer">
-        <p style="color: #8b949e; font-size: 0.9rem;">Click 'Inspect Abstract Syntax Tree' to run analysis...</p>
+  <!-- Top Navigation Bar Component -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-icon">🛡️</div>
+        <div>
+          <div class="brand-title">Leke <span>AST Code Inspector</span></div>
+        </div>
+      </div>
+      <div class="header-pills">
+        <div class="status-badge" id="serverBadge">
+          <div class="status-dot"></div>
+          <span id="serverBadgeText">Detecting Backend Engine...</span>
+        </div>
       </div>
     </div>
-  </div>
+  </header>
 
-  <script>
-    function analyzeAST() {
-      const code = document.getElementById('codeSource').value;
-      const findings = [];
+  <!-- Main Workspace -->
+  <main>
+    <!-- Hero Banner Component -->
+    <section class="hero-banner">
+      <div class="hero-text">
+        <h1>Enterprise Python AST Static Guardrail & SAST Gate</h1>
+        <p>Traverses the Abstract Syntax Tree to catch RCE, command injection, dynamic SQL, hardcoded secrets, and complexity risks before agent runtime or CI/CD merge.</p>
+      </div>
+      <div>
+        <div class="score-badge F" id="scoreBadge">Score: 0 / 100 [Rating: F]</div>
+      </div>
+    </section>
 
-      if (/eval\s*\(/.test(code)) {
-        findings.push({ rule: "DANGEROUS_EVAL_EXEC", sev: "CRITICAL", msg: "Use of built-in eval() allows arbitrary remote code execution." });
-      }
-      if (/os\.system\s*\(/.test(code)) {
-        findings.push({ rule: "INSECURE_OS_SYSTEM", sev: "HIGH", msg: "Use of os.system() is vulnerable to shell injection." });
-      }
-      if (/execute\s*\(\s*f["']/.test(code) || /execute\s*\([^,]*\+/.test(code)) {
-        findings.push({ rule: "RAW_SQL_STRING_CONCATENATION", sev: "CRITICAL", msg: "Dynamic string formatting inside database execute() leads to SQL Injection." });
-      }
-      if (/(?:api_key|secret|password)\s*=\s*["'][^"']{8,}["']/i.test(code)) {
-        findings.push({ rule: "HARDCODED_CREDENTIAL", sev: "HIGH", msg: "Hardcoded secret string found in variable assignment." });
-      }
+    <!-- Metrics Strip Component -->
+    <section class="metrics-strip">
+      <div class="metric-card red">
+        <div class="metric-label">Security Violations</div>
+        <div class="metric-val" id="metricViolations">0 <span class="metric-sub">0 Critical / 0 High</span></div>
+      </div>
+      <div class="metric-card accent">
+        <div class="metric-label">Cyclomatic Complexity</div>
+        <div class="metric-val" id="metricComplexity">1 <span class="metric-sub">McCabe</span></div>
+      </div>
+      <div class="metric-card amber">
+        <div class="metric-label">AST Node Count</div>
+        <div class="metric-val" id="metricAstNodes">0 <span class="metric-sub">Depth: 0</span></div>
+      </div>
+      <div class="metric-card green">
+        <div class="metric-label">Maintainability Index</div>
+        <div class="metric-val" id="metricMaintainability">100 <span class="metric-sub">/ 100</span></div>
+      </div>
+    </section>
 
-      const container = document.getElementById('findingsContainer');
-      container.innerHTML = '';
-
-      if (findings.length === 0) {
-        container.innerHTML = '<p style="color: #34d399;">✅ Zero security violations detected. Clean AST structure!</p>';
-        return;
-      }
-
-      findings.forEach(f => {
-        container.innerHTML += `
-          <div class="finding-card">
-            <div class="finding-title">
-              <span>⚠️ ${f.rule}</span>
-              <span style="font-size: 0.75rem; background: #ef4444; color: #fff; padding: 2px 6px; border-radius: 4px;">${f.sev}</span>
-            </div>
-            <div class="finding-desc">${f.msg}</div>
+    <!-- Workspace Grid -->
+    <div class="workspace-grid">
+      <!-- Left Panel: Code Editor Component -->
+      <section class="panel">
+        <div class="panel-header">
+          <div class="panel-title">
+            <span>📝</span> Python Source Code
           </div>
-        `;
-      });
-    }
-  </script>
+          <div class="select-wrapper">
+            <select id="samplePresetSelect">
+              <option value="vulnerable_agent">⚡ Preset: Vulnerable AI Tool Dispatcher</option>
+              <option value="insecure_crypto_pickle">⚠️ Preset: Pickle Deserialization & Broken Crypto</option>
+              <option value="hardened_clean">✅ Preset: Hardened Production Guardrail (Clean)</option>
+              <option value="complex_branching">🔄 Preset: High Cyclomatic Complexity Matrix</option>
+            </select>
+            <span class="select-arrow">▼</span>
+          </div>
+        </div>
+
+        <div class="editor-wrapper">
+          <textarea id="codeSource" spellcheck="false" placeholder="Paste Python code here to inspect AST..."></textarea>
+        </div>
+
+        <div class="panel-footer">
+          <button class="action-btn" id="inspectBtn">
+            <span>🔍</span> Inspect Abstract Syntax Tree
+          </button>
+          <button class="secondary-btn" id="clearBtn">Clear</button>
+        </div>
+      </section>
+
+      <!-- Right Panel: Multi-Tab Inspector Component -->
+      <section class="panel">
+        <nav class="tab-bar">
+          <button class="tab-btn active" data-tab="violations">
+            <span>⚠️</span> Guardrail Violations <span class="tab-badge" id="tabViolationCount">0</span>
+          </button>
+          <button class="tab-btn" data-tab="astTree">
+            <span>🌳</span> AST Hierarchy
+          </button>
+          <button class="tab-btn" data-tab="sarif">
+            <span>📦</span> SARIF / CI/CD
+          </button>
+          <button class="tab-btn" data-tab="rulesCatalog">
+            <span>📚</span> Rule Catalog
+          </button>
+        </nav>
+
+        <!-- Tab 1: Violations Component -->
+        <div class="tab-content" id="tabContentViolations">
+          <div class="violations-container" id="findingsContainer">
+            <!-- Dynamic findings rendered by ViolationsComponent.js -->
+          </div>
+        </div>
+
+        <!-- Tab 2: AST Hierarchy Component -->
+        <div class="tab-content" id="tabContentAstTree" style="display: none;">
+          <div class="ast-tree-container" id="astTreeContainer">
+            <!-- Dynamic tree rendered by AstTreeComponent.js -->
+          </div>
+        </div>
+
+        <!-- Tab 3: SARIF Export Component -->
+        <div class="tab-content" id="tabContentSarif" style="display: none;">
+          <div style="display: flex; justify-content: flex-end; margin-bottom: 0.75rem;">
+            <button class="secondary-btn" id="copySarifBtn">📋 Copy SARIF v2.1.0 JSON</button>
+          </div>
+          <div class="sarif-box" id="sarifBox">{}</div>
+        </div>
+
+        <!-- Tab 4: Rules Catalog Component -->
+        <div class="tab-content" id="tabContentRulesCatalog" style="display: none;">
+          <table class="rules-table">
+            <thead>
+              <tr>
+                <th>Rule ID</th>
+                <th>Severity</th>
+                <th>Standard & OWASP</th>
+                <th>Details & Safe Remediation</th>
+              </tr>
+            </thead>
+            <tbody id="rulesTableBody">
+              <!-- Dynamic rows rendered by RulesCatalogComponent.js -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Footer Component -->
+  <footer>
+    Part of <strong>Leke Omotayo</strong> AI & Developer Tooling Portfolio • Built with pure Python <code>ast</code> NodeVisitor & Standard Library Architecture.
+  </footer>
+
+  <!-- Modular Component Bootstrapper -->
+  <script type="module" src="/static/js/app.js"></script>
 </body>
 </html>
