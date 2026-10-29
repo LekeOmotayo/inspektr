@@ -5,7 +5,7 @@ Tests all AST security rules, metrics, complexity calculation, and SARIF output.
 
 import sys
 import unittest
-from inspector import ASTCodeInspector, RULES_REGISTRY, Severity
+from backend.core.inspector import ASTCodeInspector, RULES_REGISTRY, Severity
 
 
 class TestASTCodeInspector(unittest.TestCase):

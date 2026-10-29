@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AST Code Inspector & Security Guardrail Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="16 18 22 12 16 6"></polyline>
+          <polyline points="8 6 2 12 8 18"></polyline>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">AST CODE INSPECTOR</h1>
+        <p class="brand-subtitle">Static Abstract Syntax Tree Security & Complexity Engine</p>
+      </div>
+    </div>
+
+    <div class="header-controls">
+      <select id="snippet-select" class="header-select">
+        <option value="">Load Sample Vulnerability...</option>
+      </select>
+      <button id="analyze-btn" class="btn btn-primary">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        Run AST Scan
+      </button>
+      <button id="sarif-btn" class="btn btn-outline">Export SARIF 2.1</button>
+      <div class="port-tag">PORT 8097</div>
+    </div>
+  </header>
+
+  <main class="workspace-grid">
+    <!-- Left: Code Editor -->
+    <section class="editor-pane">
+      <div class="pane-header">
+        <span class="file-name">source_analysis.py</span>
+        <span class="editor-sub">Pure Python AST Visitor</span>
+      </div>
+      <div class="editor-container">
+        <textarea id="code-input" class="code-editor" spellcheck="false" placeholder="# Paste Python code here or select a sample snippet above..."></textarea>
+      </div>
+    </section>
+
+    <!-- Right: Telemetry & Violations -->
+    <section class="telemetry-pane">
+      <!-- Metrics Cards -->
+      <div class="metrics-row">
+        <div class="metric-card">
+          <span class="metric-title">SECURITY STATUS</span>
+          <span id="metric-status" class="metric-val status-clean">READY</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">RISK SCORE</span>
+          <span id="metric-risk" class="metric-val">0 / 100</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">CYCLOMATIC COMP.</span>
+          <span id="metric-complexity" class="metric-val">1</span>
+        </div>
+        <div class="metric-card">
+          <span class="metric-title">VIOLATIONS</span>
+          <span id="metric-violations" class="metric-val">0</span>
+        </div>
+      </div>
+
+      <!-- Violations List -->
+      <div class="violations-container">
+        <div class="pane-header">
+          <span class="pane-title">Detected Security & Quality Flaws</span>
+          <span id="violations-count-badge" class="count-badge">0 Issues</span>
+        </div>
+        <div id="violations-list" class="violations-list">
+          <div class="empty-state">No vulnerabilities detected. Click 'Run AST Scan' to evaluate source.</div>
+        </div>
+      </div>
+
+      <!-- AST Tree Hierarchy -->
+      <div class="ast-tree-container">
+        <div class="pane-header">
+          <span class="pane-title">AST Node Hierarchy Breakdown</span>
+          <span class="mono-badge">ast.NodeVisitor</span>
+        </div>
+        <div id="ast-tree-view" class="ast-tree-view">
+          <div class="empty-state">Run an inspection to view the abstract syntax hierarchy.</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
