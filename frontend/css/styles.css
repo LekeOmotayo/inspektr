@@ -348,3 +348,65 @@ body {
   color: var(--text-muted);
   font-size: 0.8rem;
 }
+
+/* Telemetry Header & Scan Status */
+.telemetry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.telemetry-title {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.scan-timestamp {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #10b981;
+}
+
+.scan-timestamp.stale {
+  color: #f59e0b;
+}
+
+.btn-clear {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-clear:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.alert-banner {
+  padding: 0.6rem 1rem;
+  background: rgba(239, 68, 68, 0.15);
+  border-left: 3px solid #ef4444;
+  color: #fca5a5;
+  font-size: 0.78rem;
+  font-family: var(--font-mono);
+}
+
+.flash-updated {
+  animation: flashPulse 0.4s ease-out;
+}
+
+@keyframes flashPulse {
+  0% { transform: scale(1.02); box-shadow: 0 0 12px rgba(245, 158, 11, 0.4); }
+  100% { transform: scale(1); box-shadow: none; }
+}

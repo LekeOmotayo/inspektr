@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/styles.css?v=2.1">
 </head>
 <body>
   <header class="app-header">
@@ -44,8 +44,12 @@
     <!-- Left: Code Editor -->
     <section class="editor-pane">
       <div class="pane-header">
-        <span class="file-name">source_analysis.py</span>
-        <span class="editor-sub">Pure Python AST Visitor</span>
+        <div>
+          <span class="file-name">source_analysis.py</span>
+          <span class="editor-sub">Pure Python AST Visitor</span>
+          <span id="editor-dirty" class="editor-dirty" style="display:none; color: #f59e0b; margin-left: 8px; font-size: 0.75rem;">● Unscanned changes</span>
+        </div>
+        <button id="clear-btn" class="btn-clear" type="button" title="Clear editor content">Clear</button>
       </div>
       <div class="editor-container">
         <textarea id="code-input" class="code-editor" spellcheck="false" placeholder="# Paste Python code here or select a sample snippet above..."></textarea>
@@ -54,6 +58,11 @@
 
     <!-- Right: Telemetry & Violations -->
     <section class="telemetry-pane">
+      <div id="alert-banner" class="alert-banner" style="display:none;"></div>
+      <div class="telemetry-header">
+        <span class="telemetry-title">LIVE TELEMETRY</span>
+        <span id="scan-timestamp" class="scan-timestamp">● Not scanned yet</span>
+      </div>
       <!-- Metrics Cards -->
       <div class="metrics-row">
         <div class="metric-card">
@@ -98,6 +107,6 @@
     </section>
   </main>
 
-  <script src="js/app.js"></script>
+  <script src="js/app.js?v=2.1"></script>
 </body>
 </html>

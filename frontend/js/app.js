@@ -3,6 +3,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const snippetSelect = document.getElementById('snippet-select');
   const analyzeBtn = document.getElementById('analyze-btn');
   const sarifBtn = document.getElementById('sarif-btn');
+  const clearBtn = document.getElementById('clear-btn');
+  const editorDirty = document.getElementById('editor-dirty');
+  const scanTimestamp = document.getElementById('scan-timestamp');
+  const alertBanner = document.getElementById('alert-banner');
 
   const metricStatus = document.getElementById('metric-status');
   const metricRisk = document.getElementById('metric-risk');
@@ -11,13 +15,71 @@ document.addEventListener('DOMContentLoaded', () => {
   const violationsCountBadge = document.getElementById('violations-count-badge');
   const violationsList = document.getElementById('violations-list');
   const astTreeView = document.getElementById('ast-tree-view');
+  const metricsRow = document.querySelector('.metrics-row');
 
   let snippetsMap = {};
+
+  function showAlert(msg) {
+    if (alertBanner) {
+      alertBanner.textContent = `⚠️ ${msg}`;
+      alertBanner.style.display = 'block';
+    }
+  }
+
+  function hideAlert() {
+    if (alertBanner) {
+      alertBanner.style.display = 'none';
+      alertBanner.textContent = '';
+    }
+  }
+
+  function markEditorClean() {
+    if (editorDirty) editorDirty.style.display = 'none';
+  }
+
+  function markEditorDirty() {
+    if (editorDirty) editorDirty.style.display = 'inline';
+    if (scanTimestamp) {
+      scanTimestamp.classList.add('stale');
+      scanTimestamp.textContent = '● Unsaved changes - click "Run AST Scan"';
+    }
+  }
+
+  codeInput.addEventListener('input', () => {
+    markEditorDirty();
+  });
+
+  // Clear button
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      codeInput.value = '';
+      snippetSelect.value = '';
+      markEditorClean();
+      resetUI();
+    });
+  }
+
+  function resetUI() {
+    hideAlert();
+    metricStatus.textContent = 'READY';
+    metricStatus.className = 'metric-val status-clean';
+    metricRisk.textContent = '0 / 100';
+    metricComplexity.textContent = '1';
+    metricViolations.textContent = '0';
+    violationsCountBadge.textContent = '0 Issues';
+    violationsList.innerHTML = '<div class="empty-state">Editor empty. Paste Python code or select a sample snippet, then click "Run AST Scan".</div>';
+    astTreeView.innerHTML = '<div class="empty-state">No AST generated.</div>';
+    if (scanTimestamp) {
+      scanTimestamp.className = 'scan-timestamp';
+      scanTimestamp.textContent = '● Ready';
+    }
+  }
 
   // Fetch pre-loaded snippets
   async function loadSnippets() {
     try {
       const res = await fetch('/api/snippets');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       snippetsMap = data.snippets || {};
 
@@ -28,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
         snippetSelect.appendChild(opt);
       }
 
-      // Pre-select first snippet
+      // Pre-select first sample vulnerability for demo
       if (snippetsMap['vulnerable_agent']) {
         snippetSelect.value = 'vulnerable_agent';
         codeInput.value = snippetsMap['vulnerable_agent'].code;
@@ -36,23 +98,37 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } catch (err) {
       console.error('Failed to load snippets:', err);
+      showAlert(`Could not connect to backend snippets API: ${err.message}`);
     }
   }
 
   snippetSelect.addEventListener('change', () => {
     const val = snippetSelect.value;
-    if (snippetsMap[val]) {
+    if (val && snippetsMap[val]) {
       codeInput.value = snippetsMap[val].code;
+      markEditorClean();
       runAnalysis();
+    } else if (!val) {
+      codeInput.value = '';
+      resetUI();
     }
   });
 
   async function runAnalysis() {
     const source = codeInput.value;
-    if (!source.trim()) return;
+    if (!source.trim()) {
+      resetUI();
+      return;
+    }
 
+    hideAlert();
     analyzeBtn.disabled = true;
-    analyzeBtn.textContent = 'Analyzing...';
+    analyzeBtn.innerHTML = `
+      <svg class="spin" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10" stroke-dasharray="32" stroke-dashoffset="12"></circle>
+      </svg>
+      Scanning AST...
+    `;
 
     try {
       const res = await fetch('/api/analyze', {
@@ -61,10 +137,21 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify({ source, filename: 'source_analysis.py' })
       });
 
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`HTTP ${res.status}: ${errText}`);
+      }
+
       const data = await res.json();
       renderResults(data);
+      markEditorClean();
     } catch (err) {
       console.error('Analysis failed:', err);
+      showAlert(`AST Scan Failed: ${err.message}`);
+      if (scanTimestamp) {
+        scanTimestamp.className = 'scan-timestamp stale';
+        scanTimestamp.textContent = '❌ Scan error';
+      }
     } finally {
       analyzeBtn.disabled = false;
       analyzeBtn.innerHTML = `
@@ -79,22 +166,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function renderResults(data) {
     if (data.status !== 'success') {
-      alert(data.message || 'Error running analysis');
+      showAlert(data.message || 'Inspection error returned by AST parser');
       return;
     }
 
-    const m = data.metrics;
-    metricRisk.textContent = `${m.risk_score} / 100`;
-    metricComplexity.textContent = m.cyclomatic_complexity;
-    metricViolations.textContent = data.violations_count;
-    violationsCountBadge.textContent = `${data.violations_count} Issues`;
+    const m = data.metrics || {};
+    metricRisk.textContent = `${m.risk_score ?? 0} / 100`;
+    metricComplexity.textContent = m.cyclomatic_complexity ?? 1;
+    metricViolations.textContent = data.violations_count ?? 0;
+    violationsCountBadge.textContent = `${data.violations_count ?? 0} Issues`;
 
     // Status pill
-    metricStatus.textContent = m.security_status;
+    metricStatus.textContent = m.security_status || 'UNKNOWN';
     metricStatus.className = 'metric-val';
-    if (m.risk_score >= 50) {
+    if ((m.risk_score ?? 0) >= 50) {
       metricStatus.classList.add('status-danger');
-    } else if (m.risk_score > 0) {
+    } else if ((m.risk_score ?? 0) > 0) {
       metricStatus.classList.add('status-warn');
     } else {
       metricStatus.classList.add('status-clean');
@@ -102,10 +189,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render Violations
     violationsList.innerHTML = '';
-    if (data.violations.length === 0) {
+    const violations = data.violations || [];
+    if (violations.length === 0) {
       violationsList.innerHTML = '<div class="empty-state">✅ Clean AST! No security or quality violations found.</div>';
     } else {
-      data.violations.forEach(v => {
+      violations.forEach(v => {
         const card = document.createElement('div');
         card.className = `violation-card ${v.severity}`;
         card.innerHTML = `
@@ -114,7 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="severity-pill ${v.severity}">${v.severity}</span>
           </div>
           <div class="violation-msg">${v.message}</div>
-          <div class="violation-meta">Line ${v.line}, Col ${v.col} • ${v.cwe}</div>
+          <div class="violation-meta">Line ${v.line}, Col ${v.col} • ${v.cwe || 'CWE'}</div>
           ${v.remediation ? `<div class="remediation-box"><strong>Remediation:</strong> ${v.remediation}</div>` : ''}
         `;
         violationsList.appendChild(card);
@@ -123,6 +211,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Render AST Tree Summary
     astTreeView.innerHTML = `<pre>${JSON.stringify(data.ast_tree || {}, null, 2)}</pre>`;
+
+    // Update timestamp
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString();
+    if (scanTimestamp) {
+      scanTimestamp.className = 'scan-timestamp';
+      scanTimestamp.textContent = `● Fresh scan at ${timeStr}`;
+    }
+
+    // Pulse animation on metric cards to show active refresh
+    if (metricsRow) {
+      metricsRow.classList.remove('flash-updated');
+      void metricsRow.offsetWidth; // force DOM reflow
+      metricsRow.classList.add('flash-updated');
+    }
   }
 
   analyzeBtn.addEventListener('click', runAnalysis);
@@ -130,12 +233,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // SARIF Export
   sarifBtn.addEventListener('click', async () => {
     const source = codeInput.value;
+    if (!source.trim()) {
+      showAlert('Enter code first before exporting SARIF report.');
+      return;
+    }
+
+    sarifBtn.disabled = true;
+    sarifBtn.textContent = 'Exporting...';
     try {
       const res = await fetch('/api/sarif', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ source, filename: 'source_analysis.py' })
       });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const sarifData = await res.json();
       const blob = new Blob([JSON.stringify(sarifData, null, 2)], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
@@ -146,6 +257,10 @@ document.addEventListener('DOMContentLoaded', () => {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export SARIF:', err);
+      showAlert(`SARIF Export Failed: ${err.message}`);
+    } finally {
+      sarifBtn.disabled = false;
+      sarifBtn.textContent = 'Export SARIF 2.1';
     }
   });
 

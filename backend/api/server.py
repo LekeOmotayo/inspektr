@@ -71,6 +71,9 @@ class ASTRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Content-Type", mime_type)
             self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
+            self.send_header("Pragma", "no-cache")
+            self.send_header("Expires", "0")
             self._set_cors()
             self.end_headers()
             self.wfile.write(content)
@@ -91,14 +94,17 @@ class ASTRequestHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"status": "error", "message": f"Malformed JSON: {e}"})
             return
 
-        if path == "/api/analyze":
-            result = self.controller.handle_analyze(payload)
-            self._send_json(200, result)
-        elif path == "/api/sarif":
-            result = self.controller.handle_sarif(payload)
-            self._send_json(200, result)
-        else:
-            self._send_json(404, {"status": "error", "message": "Unknown endpoint"})
+        try:
+            if path == "/api/analyze":
+                result = self.controller.handle_analyze(payload)
+                self._send_json(200, result)
+            elif path == "/api/sarif":
+                result = self.controller.handle_sarif(payload)
+                self._send_json(200, result)
+            else:
+                self._send_json(404, {"status": "error", "message": "Unknown endpoint"})
+        except Exception as e:
+            self._send_json(500, {"status": "error", "message": f"Server processing error: {e}"})
 
 
 def start_server(port: int = 8097):
