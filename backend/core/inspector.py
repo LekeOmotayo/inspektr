@@ -179,14 +179,28 @@ class SecurityViolation:
     remediation: str = ""
     code_snippet: str = ""
 
+    @property
+    def line(self) -> int:
+        return self.line_no
+
+    @property
+    def col(self) -> int:
+        return self.col_offset or 0
+
+    @property
+    def snippet(self) -> str:
+        return self.code_snippet
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "rule_id": self.rule_id,
             "rule": self.rule,
             "message": self.message,
             "line_no": self.line_no,
+            "line": self.line_no,
             "end_line_no": self.end_line_no or self.line_no,
             "col_offset": self.col_offset,
+            "col": self.col_offset or 0,
             "end_col_offset": self.end_col_offset,
             "severity": self.severity,
             "category": self.category,
@@ -194,6 +208,7 @@ class SecurityViolation:
             "owasp": self.owasp,
             "remediation": self.remediation,
             "code_snippet": self.code_snippet,
+            "snippet": self.code_snippet,
         }
 
 
@@ -522,6 +537,57 @@ class ASTCodeInspector:
             return ASTCodeInspector.inspect_source(f.read())
 
     @staticmethod
+    def inspect_source_full(code: str, filename: str = "snippet.py") -> Any:
+        """Performs full inspection returning an object model compatible with both CLI and API services."""
+        full_res = ASTCodeInspector.analyze_full(code)
+        violations = ASTCodeInspector.inspect_source(code) if full_res.get("success", False) else []
+        m_dict = full_res.get("metrics", {})
+        score = full_res.get("score", 100)
+        risk_score = max(0, 100 - score)
+
+        if risk_score >= 50:
+            security_status = "CRITICAL RISK"
+        elif risk_score > 0:
+            security_status = "WARNING"
+        else:
+            security_status = "SECURE"
+
+        source_lines = code.splitlines()
+        loc = len(source_lines)
+        sloc = sum(1 for line in source_lines if line.strip() and not line.strip().startswith("#"))
+
+        imports_count = 0
+        try:
+            tree = ast.parse(code)
+            for n in ast.walk(tree):
+                if isinstance(n, (ast.Import, ast.ImportFrom)):
+                    imports_count += 1
+        except Exception:
+            pass
+
+        class MetricsWrapper:
+            def __init__(self):
+                self.loc = loc
+                self.sloc = sloc
+                self.cyclomatic_complexity = m_dict.get("cyclomatic_complexity", 1)
+                self.functions_count = m_dict.get("function_count", 0)
+                self.classes_count = m_dict.get("class_count", 0)
+                self.imports_count = imports_count
+                self.risk_score = risk_score
+                self.security_status = security_status
+
+        class FullResultWrapper:
+            def __init__(self):
+                self.filename = filename
+                self.metrics = MetricsWrapper()
+                self.violations = violations
+                self.ast_summary = full_res.get("ast_tree")
+                self.score = score
+                self.rating = full_res.get("rating", "A")
+
+        return FullResultWrapper()
+
+    @staticmethod
     def analyze_full(code: str) -> Dict[str, Any]:
         """Performs end-to-end AST inspection, complexity calculation, security scoring, and tree serialization."""
         source_lines = code.splitlines()
@@ -660,8 +726,12 @@ class ASTCodeInspector:
         return item
 
     @staticmethod
-    def to_sarif(violations: List[SecurityViolation], filepath: str = "snippet.py") -> Dict[str, Any]:
+    def to_sarif(violations: Any, filepath: str = "snippet.py", filename: Optional[str] = None) -> Dict[str, Any]:
         """Generates standard SARIF v2.1.0 output for CI/CD integrations (GitHub Code Scanning, GitLab SAST)."""
+        target_path = filename or filepath
+        if isinstance(violations, str):
+            violations = ASTCodeInspector.inspect_source(violations)
+
         rules_map = {}
         results = []
 
@@ -694,7 +764,7 @@ class ASTCodeInspector:
                     "locations": [
                         {
                             "physicalLocation": {
-                                "artifactLocation": {"uri": filepath},
+                                "artifactLocation": {"uri": target_path},
                                 "region": {
                                     "startLine": v.line_no,
                                     "startColumn": (v.col_offset or 0) + 1,
